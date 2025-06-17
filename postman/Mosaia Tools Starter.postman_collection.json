@@ -1,0 +1,36 @@
+{
+	"info": {
+		"_postman_id": "7f3e8c85-dd5f-439e-ba02-4213f069649e",
+		"name": "Mosaia Tools Starter",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "38438776"
+	},
+	"item": [
+		{
+			"name": "Call tool",
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:3000?EXAMPLE_PARAM_ONE=foo&EXAMPLE_PARAM_TWO=bar",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "3000",
+					"query": [
+						{
+							"key": "EXAMPLE_PARAM_ONE",
+							"value": "foo"
+						},
+						{
+							"key": "EXAMPLE_PARAM_TWO",
+							"value": "bar"
+						}
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
