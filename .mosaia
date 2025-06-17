@@ -20,8 +20,7 @@
                     }
                 },
                 "required": [
-                    "EXAMPLE_PARAM_ONE",
-                    "EXAMPLE_PARAM_TWO"
+                    "EXAMPLE_PARAM_ONE"
                 ],
                 "additionalProperties": false
             }
