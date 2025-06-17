@@ -1,11 +1,11 @@
 {
-    "name": "test1",
-    "description": "1231231231231231232131231231231231231123123123123123123123123123123123",
+    "name": "Test R Scripts",
+    "description": "R scripts that performs LD50 analysis and chemical analysis",
     "schema": {
         "type": "function",
         "function": {
-            "name": "test1",
-            "description": "123123123123123123123123123123123123123123123123123123123",
+            "name": "ld50",
+            "description": "Performs LD50 analysis",
             "strict": true,
             "parameters": {
                 "type": "object",
