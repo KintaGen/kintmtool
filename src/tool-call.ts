@@ -2,7 +2,7 @@ import { spawn } from 'child_process';
 import path from 'path';
 
 // Helper function to run external scripts as a promise
-function runScript(command, args, options = {}): Promise<string> {
+function runScript(command: string, args: string[], options = {}): Promise<string> {
     // The 'options' object can now include 'cwd' to set the working directory
     return new Promise((resolve, reject) => {
       console.log(`Spawning: ${command} ${args.join(' ')}`);
