@@ -1,11 +1,11 @@
 {
-    "name": "Test R Scripts",
-    "description": "R scripts that performs LD50 analysis and chemical analysis",
+    "name": "Test R Scripts Chemicals and LD50 analysis",
+    "description": "R scripts that performs LD50 analysis and chemical analysis in order to help researchers in those areas.",
     "schema": {
         "type": "function",
         "function": {
-            "name": "ld50",
-            "description": "Performs LD50 analysis",
+            "name": "ld50-analysis-perform-test-R-script",
+            "description": "Performs LD50 analysis from data at filCDN using .R script to test if it is possible",
             "strict": true,
             "parameters": {
                 "type": "object",
