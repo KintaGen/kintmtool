@@ -4,7 +4,7 @@
     "schema": {
         "type": "function",
         "function": {
-            "name": "ld50-analysis-perform-test-R-script",
+            "name": "LD50-analysis-perform-test-R-script",
             "description": "Performs LD50 analysis from data at filCDN using .R script to test if it is possible",
             "strict": true,
             "parameters": {
@@ -25,8 +25,5 @@
                 "additionalProperties": false
             }
         }
-    },
-    "envVars": [
-        "ENV_VAR_ONE"
-    ]
+    }
 }
