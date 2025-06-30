@@ -10,17 +10,13 @@
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "EXAMPLE_PARAM_ONE": {
+                    "url": {
                         "type": "string",
-                        "description": "EXAMPLE_PARAM_ONE_DESCRIPTION"
-                    },
-                    "EXAMPLE_PARAM_TWO": {
-                        "type": "string",
-                        "description": "EXAMPLE_PARAM_TWO_DESCRIPTION"
+                        "description": "Data containing experiment analysis of dl50"
                     }
                 },
                 "required": [
-                    "EXAMPLE_PARAM_ONE"
+                    "url"
                 ],
                 "additionalProperties": false
             }

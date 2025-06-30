@@ -35,13 +35,12 @@ function runScript(command: string, args: string[], options = {}): Promise<strin
 }
 
 
-export default async function toolCall(paramOne: string, paramTwo: string, envVar: string): Promise<string> {
+export default async function toolCall(url: string): Promise<string> {
     let result = '';
-    const dataUrl = paramOne;
+    const dataUrl = url;
     const r_script_path = path.join(__dirname, 'scripts', 'ld50_analysis.R');
-    console.log(`Received event with the following parameters: ${paramOne}, ${paramTwo} and the following env var: ${envVar}.`)
 
-    result = paramOne + paramTwo;
+    result = url;
     const command = 'Rscript';
     const args = [r_script_path, dataUrl];
 

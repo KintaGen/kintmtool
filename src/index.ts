@@ -9,22 +9,17 @@ type RawEvent = {
 
 type ParsedEvent = {
     args: Record<string, string>;
-    secrets: Record<string, string>;
 }
 
 export async function handler(event: RawEvent) {
     const {
         args: {
-            EXAMPLE_PARAM_ONE,
-            EXAMPLE_PARAM_TWO,
-        },
-        secrets: {
-            ENV_VAR_ONE
+            url,
         }
     } = JSON.parse(event.body) as ParsedEvent;
 
     try {
-        const result = await toolCall(EXAMPLE_PARAM_ONE, EXAMPLE_PARAM_TWO, ENV_VAR_ONE)
+        const result = await toolCall(url)
 
         return {
             statusCode: 200,
