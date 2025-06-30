@@ -7,7 +7,7 @@ function runScript(command: string, args: string[], options = {}): Promise<strin
     return new Promise((resolve, reject) => {
       console.log(`Spawning: ${command} ${args.join(' ')}`);
       const process = spawn(command, args, options);
-  
+      console.log("test")
       let stdout = '';
       let stderr = '';
   
