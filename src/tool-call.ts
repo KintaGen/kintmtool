@@ -256,8 +256,7 @@ export default async function toolCall(
     SYNAPSE_RPC_URL: string
   }
 ): Promise<string> {
-    return "test";
-
+    
     let finalOutput = {};
     const outputPlotPath = path.join(resultsDir, 'ld50_plot.jpeg');
 
@@ -268,8 +267,8 @@ export default async function toolCall(
         }
         
         // 2. Download and Parse Data
-        console.log(`Downloading data from ${filCdnBaseUrl}${url}...`);
-        const response = await axios.get(`${filCdnBaseUrl}${url}`);
+        console.log(`Downloading data from ${url}...`);
+        const response = await axios.get(`${url}`);
         const csvData = response.data;
         // ... (parsing logic remains the same)
         const lines = csvData.trim().split('\n');
