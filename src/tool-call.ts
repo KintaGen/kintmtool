@@ -256,7 +256,8 @@ export default async function toolCall(
     SYNAPSE_RPC_URL: string
   }
 ): Promise<string> {
-    
+    return "test";
+
     let finalOutput = {};
     const outputPlotPath = path.join(resultsDir, 'ld50_plot.jpeg');
 
