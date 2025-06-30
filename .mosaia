@@ -1,18 +1,18 @@
 {
-    "name": "Test R Scripts Chemicals and LD50 analysis",
-    "description": "R scripts that performs LD50 analysis and chemical analysis in order to help researchers in those areas.",
+    "name": "Test Chemicals and LD50 analysis",
+    "description": "Scripts that performs LD50 analysis and chemical analysis in order to help researchers in those areas.",
     "schema": {
         "type": "function",
         "function": {
-            "name": "LD50-analysis-perform-test-R-scripts",
-            "description": "Performs LD50 analysis from data at filCDN using .R script to test if it is possible",
+            "name": "LD50-analysis-perform-test-scripts",
+            "description": "Performs LD50 analysis from data at filCDN based on previously done .R script to test possibilities",
             "strict": true,
             "parameters": {
                 "type": "object",
                 "properties": {
                     "url": {
                         "type": "string",
-                        "description": "Data containing experiment analysis of dl50"
+                        "description": "Data containing experiment analysis of dl50 as csv with dose,response,total as headers, where response is number of deaths, total the total organisms treated with the chemical(s) and dose the dosage of chemical(s)"
                     }
                 },
                 "required": [
@@ -23,5 +23,8 @@
         }
     },
     "envVars": [
+        "SYNAPSE_PRIVATE_KEY",
+        "SYNAPSE_NETWORK",
+        "SYNAPSE_RPC_URL"
     ]
 }

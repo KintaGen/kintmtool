@@ -1,20 +1,25 @@
 {
     "compilerOptions": {
-        "target": "ESNext",
-        "module": "CommonJS",
-        "moduleResolution": "node",
-        "esModuleInterop": true,
-        "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true,
-        "strict": true,
-        "outDir": "./dist",
-        "rootDir": "./src",
-        "resolveJsonModule": true
+      // --- Module Settings (from previous fix) ---
+      "target": "es2022",
+      "module": "NodeNext",
+      "moduleResolution": "NodeNext",
+  
+      // --- Output Settings ---
+      "outDir": "./dist",
+      "rootDir": "./src",
+      "allowSyntheticDefaultImports": true, // <-- ADD THIS LINE
+
+      // --- THE FIX: Declaration and JS Settings ---
+      "declaration": true,   // <-- ADD THIS: Generate .d.ts files
+      "allowJs": true,       // <-- ADD THIS: Allow importing .js files
+  
+      // --- Standard Best Practices ---
+      "strict": true,
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "forceConsistentCasingInFileNames": true
     },
-    "include": [
-        "src/**/*.ts",
-    ],
-    "exclude": [
-        "node_modules"
-    ]
-}
+    "include": ["src/**/*"] // Make sure this points to your src directory
+    
+  }

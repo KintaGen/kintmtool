@@ -5,19 +5,25 @@
   "author": "",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc && mkdir -p dist/results && mkdir -p dist/scripts && cp -R src/scripts/ dist/",
+    "build": "tsc && mkdir -p dist/results",
     "start:dev": "npm run build && node bin/dev.js",
-    "test:request": "curl -XGET \"http://localhost:3000?EXAMPLE_PARAM_ONE=baga6ea4seaqchyykmwuxza4ddrvm6s3kxpkoaviy6arjlgnn77r4obnvnf4tkgq&EXAMPLE_PARAM_TWO=bar\" && echo"
+    "test:request": "curl -XGET \"http://localhost:3000?url=baga6ea4seaqchyykmwuxza4ddrvm6s3kxpkoaviy6arjlgnn77r4obnvnf4tkgq\" && echo"
   },
   "devDependencies": {
-    "@types/node": "^20.12.11",
-    "dotenv": "^16.5.0",
+    "@types/node": "^20.19.2",
+    "dotenv": "^16.6.1",
     "express": "^5.1.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.5"
+    "typescript": "^5.8.3"
   },
   "license": "ISC",
   "dependencies": {
+    "@filoz/synapse-sdk": "^0.15.0",
+    "axios": "^1.10.0",
+    "chart.js": "^4.5.0",
+    "chartjs-to-image": "^1.2.2",
+    "form-data": "^4.0.3",
+    "ml-levenberg-marquardt": "^5.0.0",
     "path": "^0.12.7"
   }
 }

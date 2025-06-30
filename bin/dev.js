@@ -6,24 +6,25 @@ dotenv.config();
 
 const app = express();
 
-const { ENV_VAR_ONE, PORT } = process.env;
+const { SYNAPSE_PRIVATE_KEY, SYNAPSE_NETWORK,SYNAPSE_RPC_URL,PORT } = process.env;
 
-if(ENV_VAR_ONE === undefined) {
-    console.log('`ENV_VAR_ONE` not set. Copy .env.example to .env first.');
+if(SYNAPSE_PRIVATE_KEY === undefined) {
+    console.log('`SYNAPSE_PRIVATE_KEY` not set. Copy .env.example to .env first.');
     process.exit(1);
 }
 
 app.get('/', async (req, res) => {
-    const { EXAMPLE_PARAM_ONE, EXAMPLE_PARAM_TWO } = req.query;
+    const { url } = req.query;
 
     const event = {
         body: JSON.stringify({
             args: {
-                EXAMPLE_PARAM_ONE,
-                EXAMPLE_PARAM_TWO
+                url,
             },
             secrets: {
-                ENV_VAR_ONE
+                SYNAPSE_PRIVATE_KEY,
+                SYNAPSE_NETWORK,
+                SYNAPSE_RPC_URL
             }
         })
     }
