@@ -8,10 +8,6 @@ const app = express();
 
 const { SYNAPSE_PRIVATE_KEY, SYNAPSE_NETWORK,SYNAPSE_RPC_URL,PORT } = process.env;
 
-if(SYNAPSE_PRIVATE_KEY === undefined) {
-    console.log('`SYNAPSE_PRIVATE_KEY` not set. Copy .env.example to .env first.');
-    process.exit(1);
-}
 
 app.get('/', async (req, res) => {
     const { url } = req.query;
