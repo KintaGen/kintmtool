@@ -53,8 +53,27 @@ export async function uploadData(
 
   const synapse = await getSynapse(synapseEnv);
   const storage = await synapse.createStorage({
-    proofSetId: undefined, // Can be undefined
-    withCDN: true, // Explicitly set here too for robustness
+    callbacks: {
+      onProviderSelected: (provider: any) => {
+        console.log(`✓ Selected storage provider: ${provider.owner}`)
+        console.log(`  PDP URL: ${provider.pdpUrl}`)
+      },
+      onProofSetResolved: (info: any) => {
+        if (info.isExisting) {
+          console.log(`✓ Using existing proof set: ${info.proofSetId}`)
+        } else {
+          console.log(`✓ Created new proof set: ${info.proofSetId}`)
+        }
+      },
+      onProofSetCreationStarted: (transaction: any) => {
+        console.log(`  Creating proof set, tx: ${transaction.hash}`)
+      },
+      onProofSetCreationProgress: (progress: any) => {
+        if (progress.transactionMined && !progress.proofSetLive) {
+          console.log('  Transaction mined, waiting for proof set to be live...')
+        }
+      },
+    }
   });
 
   
@@ -64,11 +83,10 @@ export async function uploadData(
   }
   
   const uploadResult = await storage.upload(dataBuffer, {});
-
   console.log(`[SYNAPSE] Successfully uploaded. CommP: ${uploadResult.commp}`);
   return {
     commp: uploadResult.commp.toString(),
     size: uploadResult.size,
-    proofSetId: storage.proofSetId, // <-- FIX #3: No change needed here, as it's now correctly string-to-string.
+    proofSetId: storage.proofSetId, 
   };
 }
