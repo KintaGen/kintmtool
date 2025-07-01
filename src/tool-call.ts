@@ -376,7 +376,7 @@ export default async function toolCall(
         console.log('Encoding plot as Base64 Data URI...');
         console.log('Uploading plot to filcdn ...');
 
-        //const plotUploadResult: UploadResult = await uploadData(plotBuffer, { proofSetId: 318 },synapseEnv); 
+        const plotUploadResult: UploadResult = await uploadData(plotBuffer,synapseEnv); 
         const plotDataUri = `data:image/jpeg;base64,${plotBuffer.toString('base64')}`;
 
         // 6b. Assemble the complete JSON payload containing results and the embedded plot
@@ -393,20 +393,20 @@ export default async function toolCall(
                 method: "Log-Logistic (LL.2) fit via Nelder-Mead optimization; 95% CI and SE via Bootstrap"
             },
             plotDataUri: plotDataUri,
-            //plotDataCID: plotUploadResult.commp
+            plotDataCID: plotUploadResult.commp
         };
 
-        /* 6c. Convert the JSON payload object to a Buffer for upload
+        // 6c. Convert the JSON payload object to a Buffer for upload
         const payloadBuffer = Buffer.from(JSON.stringify(uploadPayload, null, 2), 'utf-8');
 
         // 6d. Upload the entire payload buffer using the Synapse service function
         console.log(`Uploading combined results JSON (${(payloadBuffer.length / 1024).toFixed(2)} KB) via Synapse...`);
         
         // We use the proofSetId from the original script as an option.
-        const uploadResult: UploadResult = await uploadData(payloadBuffer, { proofSetId: 318 },synapseEnv);
+        const uploadResult: UploadResult = await uploadData(payloadBuffer,synapseEnv);
 
         console.log('Upload complete via Synapse. CommP:', uploadResult.commp);
-        */
+        
         // --- SECTION 7: MODIFIED FINAL OUTPUT ---
         console.log('Analysis done');
 
@@ -414,8 +414,8 @@ export default async function toolCall(
         finalOutput = {
             success: true,
             // The CID now points to the entire JSON object on FilCDN.
-            //resultCid: uploadResult.commp,
-            //proofSetId: uploadResult.proofSetId,
+            resultCid: uploadResult.commp,
+            proofSetId: uploadResult.proofSetId,
             uploadPayload: uploadPayload,
             message: "Successfully analyzed data and uploaded combined results JSON.",
         };

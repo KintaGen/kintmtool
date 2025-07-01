@@ -46,7 +46,6 @@ export async function getSynapse(synapseEnv: SynapseEnv): Promise<Synapse> {
 
 export async function uploadData(
   dataBuffer: Buffer,
-  options: UploadOptions = {},
   synapseEnv: SynapseEnv = {}): Promise<UploadResult> {
   if (!synapseEnv.SYNAPSE_PRIVATE_KEY || !synapseEnv.SYNAPSE_NETWORK || !synapseEnv.SYNAPSE_RPC_URL) {
     throw new Error(".env or secrets are incomplete");
@@ -54,7 +53,7 @@ export async function uploadData(
 
   const synapse = await getSynapse(synapseEnv);
   const storage = await synapse.createStorage({
-    proofSetId: 353, // Can be undefined
+    proofSetId: undefined, // Can be undefined
     withCDN: true, // Explicitly set here too for robustness
   });
 
