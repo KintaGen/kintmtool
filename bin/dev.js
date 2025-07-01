@@ -14,13 +14,14 @@ if(API_URL === undefined) {
 }
 
 app.get('/', async (req, res) => {
-    const { url } = req.query;
+    const { url,type } = req.query;
     
     
     const event = {
         body: JSON.stringify({
             args: {
                 url,
+                type
             },
             secrets: {
                 API_URL,

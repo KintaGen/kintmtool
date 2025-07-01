@@ -13,16 +13,32 @@ import FormData from 'form-data';
  */
 export default async function toolCall(
     dataUrlFragment: string,
+    dataType: string,
     envVars: {
         API_URL: string
     }
 ): Promise<string> {
 
     console.log(`Preparing to call Express API at: ${envVars.API_URL} for data: ${dataUrlFragment}`);
-
+    console.log(dataType)
     // The full URL of the API endpoint we need to call
-    const endpointUrl = `${envVars.API_URL}/analyze-ld50`;
+    const endpointUrlDL50 = `${envVars.API_URL}/analyze-ld50`;
     const uploadEndpoint = `${envVars.API_URL}/upload`;
+    const endpointUrlGCMS = `${envVars.API_URL}/analyze-gcms`;
+    let endpointUrl;
+    console.log(dataType === "GCMS")
+    if(dataType === "DL50"){
+        endpointUrl = endpointUrlDL50;
+    } else if(dataType === "GCMS"){
+        endpointUrl = endpointUrlGCMS;
+    }
+    console.log(endpointUrl)
+    if(!endpointUrl){
+        return(JSON.stringify({
+            success: false,
+            message: "Must define datatype as NMR or DL50"
+        }))
+    }
     // The JSON payload that the /analyze-ld50 endpoint expects
     const requestPayload = {
         dataUrl: dataUrlFragment
@@ -40,10 +56,13 @@ export default async function toolCall(
 
         // The response.data will contain the JSON object returned by the Express server
         const analysisResult = response.data;
-        console.log(analysisResult.results)
+        // to test
+        if(dataType === "GCMS"){
+            return analysisResult;
+        }
         console.log('Successfully received response from Express API.');
 
-        if (analysisResult.status !== 'success' || !analysisResult.results?.plot_b64) {
+        if (analysisResult.status !== 'success' || (!analysisResult.results?.plot_b64)) {
             throw new Error(`LD50 analysis failed or did not return a plot: ${analysisResult.error || 'Unknown error'}`);
         }       
 

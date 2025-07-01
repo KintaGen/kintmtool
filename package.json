@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc",
     "start:dev": "npm run build && node bin/dev.js",
-    "test:request": "curl -XGET \"http://localhost:3000?url=https%3A%2F%2F0xcdb8cc9323852ab3bed33f6c54a7e0c15d555353.calibration.filcdn.io%2Fbaga6ea4seaqchyykmwuxza4ddrvm6s3kxpkoaviy6arjlgnn77r4obnvnf4tkgq\" && echo"
+    "test:request": "curl -XGET \"http://localhost:3000?url=https%3A%2F%2F0xcdb8cc9323852ab3bed33f6c54a7e0c15d555353.calibration.filcdn.io%2Fbaga6ea4seaqchyykmwuxza4ddrvm6s3kxpkoaviy6arjlgnn77r4obnvnf4tkgq&type=GCMS\" && echo"
   },
   "devDependencies": {
     "@types/node": "^20.19.2",

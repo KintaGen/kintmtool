@@ -13,6 +13,7 @@ export async function handler(event: RawEvent) {
     const {
         args: {
             url,
+            type
         },
         secrets: {
             API_URL
@@ -20,7 +21,7 @@ export async function handler(event: RawEvent) {
     } = JSON.parse(event.body) as ParsedEvent;
 
     try {
-        const result = await toolCall(url,{
+        const result = await toolCall(url,type,{
             API_URL
         })
 

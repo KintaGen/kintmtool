@@ -12,11 +12,16 @@
                 "properties": {
                     "url": {
                         "type": "string",
-                        "description": "Data containing experiment analysis of dl50 as csv with dose,response,total as headers, where response is number of deaths, total the total organisms treated with the chemical(s) and dose the dosage of chemical(s)"
+                        "description": "Data containing experiment analysis of dl50 as csv with dose,response,total as headers, where response is number of deaths, total the total organisms treated with the chemical(s) and dose the dosage of chemical(s) or GCMS data"
+                    },
+                    "type": {
+                        "type": "string",
+                        "description": "Data type as DL50 or GCMS"
                     }
                 },
                 "required": [
-                    "url"
+                    "url",
+                    "type"
                 ],
                 "additionalProperties": false
             }
