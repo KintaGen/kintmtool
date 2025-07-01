@@ -15,7 +15,11 @@ interface DoseData {
     response: number[];
     total: number[];
 }
-
+interface BootstrapResult {
+    lower: number;
+    upper: number;
+    standardError: number | null; // Can be null if it fails
+}
 interface FitResult {
     ld50: number;
     slope: number;
@@ -168,12 +172,11 @@ function fitModel(data: DoseData): FitResult {
  * @param iterations - Number of bootstrap samples to run (e.g., 1000).
  * @returns The lower and upper bounds of the confidence interval.
  */
-function getBootstrapCI(data: DoseData, iterations = 1000): { lower: number; upper: number } {
+function getBootstrapCI(data: DoseData, iterations = 1000): BootstrapResult {
     const ld50Estimates: number[] = [];
     const n = data.dose.length;
 
     for (let i = 0; i < iterations; i++) {
-        // Create a resampled dataset with replacement
         const resampledData: DoseData = { dose: [], response: [], total: [] };
         for (let j = 0; j < n; j++) {
             const randomIndex = Math.floor(Math.random() * n);
@@ -181,22 +184,26 @@ function getBootstrapCI(data: DoseData, iterations = 1000): { lower: number; upp
             resampledData.response.push(data.response[randomIndex]);
             resampledData.total.push(data.total[randomIndex]);
         }
-        
         try {
             const fit = fitModel(resampledData);
-            // Only store valid, positive LD50 estimates
             if (fit && fit.ld50 > 0 && isFinite(fit.ld50)) {
                 ld50Estimates.push(fit.ld50);
             }
-        } catch (e) {
-            // Ignore fits that fail on resampled data
-        }
+        } catch (e) { /* Ignore failed fits */ }
     }
     
-    if (ld50Estimates.length < 50) { // Not enough successful fits
-      return { lower: NaN, upper: NaN };
+    if (ld50Estimates.length < 50) {
+      return { lower: NaN, upper: NaN, standardError: null };
     }
 
+    // --- NEW: Calculate Standard Error ---
+    // The standard error is the standard deviation of the bootstrap sample estimates.
+    const meanLd50 = ld50Estimates.reduce((a, b) => a + b, 0) / ld50Estimates.length;
+    const squaredDeviations = ld50Estimates.map(x => (x - meanLd50) ** 2);
+    const variance = squaredDeviations.reduce((a, b) => a + b, 0) / (ld50Estimates.length - 1); // Sample variance
+    const standardError = Math.sqrt(variance);
+
+    // --- Calculate Confidence Interval (as before) ---
     ld50Estimates.sort((a, b) => a - b);
     const lowerIndex = Math.floor(0.025 * ld50Estimates.length);
     const upperIndex = Math.ceil(0.975 * ld50Estimates.length);
@@ -204,6 +211,7 @@ function getBootstrapCI(data: DoseData, iterations = 1000): { lower: number; upp
     return {
         lower: ld50Estimates[lowerIndex],
         upper: ld50Estimates[upperIndex],
+        standardError: standardError,
     };
 }
 
@@ -374,7 +382,7 @@ export default async function toolCall(
         // 6b. Assemble the complete JSON payload containing results and the embedded plot
         const uploadPayload = {
             ld50_estimate: fit.ld50,
-            standard_error: null, // Bootstrap CI doesn't directly produce a standard error
+            standard_error: ci.standardError,
             confidence_interval_lower: ci.lower,
             confidence_interval_upper: ci.upper,
             model_details: {
@@ -382,9 +390,9 @@ export default async function toolCall(
                     slope_b: fit.slope,
                     ld50_e: fit.ld50
                 },
-                method: "Log-Logistic (LL.2) fit via Levenberg-Marquardt; 95% CI via Bootstrap"
+                method: "Log-Logistic (LL.2) fit via Nelder-Mead optimization; 95% CI and SE via Bootstrap"
             },
-            plotDataUri: plotDataUri, // The plot is now embedded data
+            plotDataUri: plotDataUri,
             //plotDataCID: plotUploadResult.commp
         };
 
@@ -400,7 +408,8 @@ export default async function toolCall(
         console.log('Upload complete via Synapse. CommP:', uploadResult.commp);
         */
         // --- SECTION 7: MODIFIED FINAL OUTPUT ---
-        
+        console.log('Analysis done');
+
         // 7. Assemble the final output, which now points to the uploaded JSON payload.
         finalOutput = {
             success: true,
