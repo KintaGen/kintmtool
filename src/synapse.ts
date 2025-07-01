@@ -54,7 +54,7 @@ export async function uploadData(
 
   const synapse = await getSynapse(synapseEnv);
   const storage = await synapse.createStorage({
-    proofSetId: undefined, // Can be undefined
+    proofSetId: 353, // Can be undefined
     withCDN: true, // Explicitly set here too for robustness
   });
 
