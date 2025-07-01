@@ -22,9 +22,8 @@ if(SYNAPSE_RPC_URL === undefined) {
 }
 app.get('/', async (req, res) => {
     const { url } = req.query;
-    res.send(url);
-
-    /*
+    
+    
     const event = {
         body: JSON.stringify({
             args: {
@@ -41,7 +40,7 @@ app.get('/', async (req, res) => {
     const result = await handler(event)
 
     res.status(result.statusCode).send(result.body);
-    */
+    
 });
 
 const port = PORT || 3000;

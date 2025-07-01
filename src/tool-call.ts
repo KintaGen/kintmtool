@@ -322,7 +322,7 @@ export default async function toolCall(
     SYNAPSE_NETWORK: string,
     SYNAPSE_RPC_URL: string
   }
-): Promise<string> {
+): Promise<object> {
     
     let finalOutput = {};
     const outputPlotPath = path.join(resultsDir, 'ld50_plot.jpeg');
@@ -441,7 +441,7 @@ export default async function toolCall(
       }
   }
 
-    return JSON.stringify(finalOutput, null, 2);
+  return(finalOutput);
 }
 
 // Add a declaration for the custom Math.median function to satisfy TypeScript
