@@ -1,7 +1,6 @@
 import path from 'path';
 import fs from 'fs';
 import axios from 'axios';
-import { levenbergMarquardt,ParameterizedFunction } from 'ml-levenberg-marquardt';
 
 import ChartJsImage from 'chartjs-to-image';
 
@@ -50,61 +49,118 @@ const logLogistic2 = (params: number[], x: number): number => {
 
 
 
-// We redefine the fitting function to match the library's expected "function that returns a function" signature.
-// This new function will be used to trick the optimizer.
 
-const fittingFunctionForLM = (data: DoseData): ParameterizedFunction => {
-  // 1. This outer function takes the parameters being optimized (b, e)
-  return (params: number[]) => {
-      // 2. It calculates the negative log-likelihood, just like before.
-      let negLogLikelihood = 0;
-      const { dose, response, total } = data;
-      for (let i = 0; i < dose.length; i++) {
-          if (dose[i] <= 0) continue;
-          const predictedProb = logLogistic2(params, dose[i]);
-          const p = Math.max(1e-9, Math.min(1 - 1e-9, predictedProb));
-          const successes = response[i];
-          const trials = total[i];
-          negLogLikelihood -= (successes * Math.log(p) + (trials - successes) * Math.log(1 - p));
+
+function negativeLogLikelihood(params: number[], data: DoseData): number {
+  let nll = 0;
+  const { dose, response, total } = data;
+  for (let i = 0; i < dose.length; i++) {
+      const d = dose[i];
+      if (d <= 0) continue;
+      const p = logLogistic2(params, d);
+      const p_clipped = Math.max(1e-9, Math.min(1 - 1e-9, p));
+      nll -= (response[i] * Math.log(p_clipped) + (total[i] - response[i]) * Math.log(1 - p_clipped));
+  }
+  return nll;
+}
+
+// --- THE FINAL, VERIFIED, AND SIMPLER fitModel FUNCTION ---
+function nelderMead(
+  f: (x: number[]) => number,
+  x0: number[]
+): { x: number[], fx: number } {
+  const n = x0.length;
+  const maxIter = 2000;
+  const step = 0.1;
+  const tol = 1e-6;
+
+  // Create initial simplex
+  let simplex = [x0.slice()];
+  for (let i = 0; i < n; i++) {
+      const point = x0.slice();
+      point[i] += step;
+      simplex.push(point);
+  }
+
+  for (let iter = 0; iter < maxIter; iter++) {
+      // 1. Order simplex by function value
+      simplex.sort((a, b) => f(a) - f(b));
+
+      // Check for convergence
+      if (f(simplex[n]) - f(simplex[0]) < tol) {
+          break;
       }
-      
-      // 3. It RETURNS A NEW FUNCTION. This inner function is what the library
-      //    will evaluate. We make it ignore its input `x` and always return
-      //    the calculated negative log-likelihood.
-      return (_x: number) => negLogLikelihood;
-  };
-};
 
-// --- The fitModel function is now updated to use the new fitting function ---
+      // 2. Calculate centroid of all points except the worst
+      const centroid = new Array(n).fill(0);
+      for (let i = 0; i < n; i++) {
+          for (let j = 0; j < n; j++) {
+              centroid[j] += simplex[i][j] / n;
+          }
+      }
+
+      const worstPoint = simplex[n];
+
+      // 3. Reflection
+      const reflected = centroid.map((c, i) => c + (c - worstPoint[i]));
+      const f_r = f(reflected);
+
+      if (f(simplex[0]) <= f_r && f_r < f(simplex[n - 1])) {
+          simplex[n] = reflected;
+          continue;
+      }
+
+      // 4. Expansion
+      if (f_r < f(simplex[0])) {
+          const expanded = centroid.map((c, i) => c + 2 * (reflected[i] - c));
+          if (f(expanded) < f_r) {
+              simplex[n] = expanded;
+          } else {
+              simplex[n] = reflected;
+          }
+          continue;
+      }
+
+      // 5. Contraction
+      const contracted = centroid.map((c, i) => c + 0.5 * (worstPoint[i] - c));
+      if (f(contracted) < f(worstPoint)) {
+          simplex[n] = contracted;
+          continue;
+      }
+
+      // 6. Shrink
+      for (let i = 1; i <= n; i++) {
+          simplex[i] = simplex[0].map((s0, j) => s0 + 0.5 * (simplex[i][j] - s0));
+      }
+  }
+
+  return { x: simplex[0], fx: f(simplex[0]) };
+}
+
+
+// --- The NEW fitModel function that uses our own algorithm ---
 function fitModel(data: DoseData): FitResult {
-  // Create the special function required by the library
-  const parameterizedFunction = fittingFunctionForLM(data);
-  
-  // Provide good initial guesses
+  const objectiveFn = (p: number[]) => {
+      // Add a penalty for non-positive parameters to guide the optimizer
+      if (p[1] <= 0) return 1e9; // If LD50 is non-positive, return a large number
+      return negativeLogLikelihood(p, data);
+  };
+
   const proportions = data.response.map((r, i) => r / data.total[i]);
   const halfEffectIndex = proportions.map(p => Math.abs(p - 0.5)).indexOf(Math.min(...proportions.map(p => Math.abs(p - 0.5))));
-  const initialLD50Guess = data.dose[halfEffectIndex] || calculateMedian(data.dose.filter(d => d > 0));
-
-  const options = {
-      initialValues: [1, initialLD50Guess],
-      maxIterations: 500,
-  };
+  let initialLD50Guess = data.dose[halfEffectIndex] || calculateMedian(data.dose.filter(d => d > 0));
+  if (initialLD50Guess <= 0) initialLD50Guess = 0.1;
   
-  // --- THIS IS THE CRITICAL FIX ---
-  // The library validates the length of the data arrays we pass in.
-  // We must provide a "dummy" dataset that has enough points to pass this check.
-  // The actual values don't matter because our custom `fittingFunctionForLM` ignores them.
-  // We'll create an array of indices with the same length as our real data.
-  const dummyX = Array.from({ length: data.dose.length }, (_, i) => i);
-  const dummyY = Array.from({ length: data.dose.length }, () => 0); // Y values can all be 0
-  const dummyData = { x: dummyX, y: dummyY };
+  const initialParams = [1.0, initialLD50Guess];
 
-  // The call now matches the expected signature: (data, function, options)
-  const { parameterValues } = levenbergMarquardt(dummyData, parameterizedFunction, options);
+  // Call our own, internal Nelder-Mead function
+  const result = nelderMead(objectiveFn, initialParams);
   
+  const finalParams = result.x;
+
   return {
-      slope: parameterValues[0],
-      ld50: parameterValues[1],
+      slope: finalParams[0],
+      ld50: finalParams[1],
   };
 }
 
@@ -172,8 +228,19 @@ async function generatePlot(
   const minDose = Math.min(...data.dose.filter(d => d > 0));
   const maxDose = Math.max(...data.dose);
   const curvePoints = [];
+  // Step 1: Get the start and end points in log10 space
+  const log10MinDose = Math.log10(minDose);
+  const log10MaxDose = Math.log10(maxDose);
+  const log10Range = log10MaxDose - log10MinDose;
+
   for (let i = 0; i < 100; i++) {
-      const dose = Math.exp(Math.log(minDose) + (Math.log(maxDose) - Math.log(minDose)) * (i / 99));
+      // Step 2: Create an evenly spaced point IN LOG10 SPACE
+      const log10Dose = log10MinDose + log10Range * (i / 99);
+
+      // Step 3: Convert the log10 point BACK to normal dose space
+      const dose = 10 ** log10Dose; // This is the same as Math.pow(10, log10Dose)
+      
+      // Step 4: Calculate the curve's y-value for that dose
       curvePoints.push({ x: dose, y: logLogistic2([fit.slope, fit.ld50], dose) });
   }
 
@@ -359,8 +426,20 @@ export default async function toolCall(
         console.error("An error occurred during the process:", error.message);
         finalOutput = { success: false, error: error.message };
     } finally {
-        // We leave the plot file for inspection, but you could add cleanup here.
-    }
+      // --- THIS IS THE NEW CLEANUP LOGIC ---
+      // This block will always run, after the try or after the catch.
+      // Check if the file exists before trying to delete it to avoid errors.
+      if (fs.existsSync(outputPlotPath)) {
+          try {
+              fs.unlinkSync(outputPlotPath);
+              console.log(`Successfully deleted temporary plot file: ${outputPlotPath}`);
+          } catch (err) {
+              // If deletion fails for some reason (e.g., permissions), log it
+              // but don't crash the whole process.
+              console.error(`Failed to delete temporary plot file`);
+          }
+      }
+  }
 
     return JSON.stringify(finalOutput, null, 2);
 }

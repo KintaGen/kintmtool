@@ -1,2 +1,4 @@
 ignoredBuiltDependencies:
   - canvas
+  - core-js
+  - keytar
