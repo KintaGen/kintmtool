@@ -6,20 +6,13 @@ dotenv.config();
 
 const app = express();
 
-const { SYNAPSE_PRIVATE_KEY, SYNAPSE_NETWORK,SYNAPSE_RPC_URL,PORT } = process.env;
+const { API_URL,PORT } = process.env;
 
-if(SYNAPSE_PRIVATE_KEY === undefined) {
-    console.log('`SYNAPSE_PRIVATE_KEY` not set. Copy .env.example to .env first.');
+if(API_URL === undefined) {
+    console.log('`API_URL` not set. Copy .env.example to .env first.');
     process.exit(1);
 }
-if(SYNAPSE_NETWORK === undefined) {
-    console.log('`SYNAPSE_NETWORK` not set. Copy .env.example to .env first.');
-    process.exit(1);
-}
-if(SYNAPSE_RPC_URL === undefined) {
-    console.log('`SYNAPSE_RPC_URL` not set. Copy .env.example to .env first.');
-    process.exit(1);
-}
+
 app.get('/', async (req, res) => {
     const { url } = req.query;
     
@@ -30,9 +23,7 @@ app.get('/', async (req, res) => {
                 url,
             },
             secrets: {
-                SYNAPSE_PRIVATE_KEY,
-                SYNAPSE_NETWORK,
-                SYNAPSE_RPC_URL
+                API_URL,
             }
         })
     }

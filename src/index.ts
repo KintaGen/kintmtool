@@ -15,15 +15,13 @@ export async function handler(event: RawEvent) {
             url,
         },
         secrets: {
-            SYNAPSE_PRIVATE_KEY,
-            SYNAPSE_NETWORK,
-            SYNAPSE_RPC_URL
+            API_URL
         }
     } = JSON.parse(event.body) as ParsedEvent;
 
     try {
         const result = await toolCall(url,{
-            SYNAPSE_PRIVATE_KEY,SYNAPSE_NETWORK,SYNAPSE_RPC_URL
+            API_URL
         })
 
         return {

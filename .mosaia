@@ -23,8 +23,6 @@
         }
     },
     "envVars": [
-        "SYNAPSE_PRIVATE_KEY",
-        "SYNAPSE_NETWORK",
-        "SYNAPSE_RPC_URL"
+        "API_URL"
     ]
 }
