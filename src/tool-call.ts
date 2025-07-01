@@ -1,5 +1,4 @@
 import path from 'path';
-import fs from 'fs';
 import axios from 'axios';
 
 import ChartJsImage from 'chartjs-to-image';
@@ -8,8 +7,7 @@ import ChartJsImage from 'chartjs-to-image';
 import { uploadData, UploadResult } from './synapse'; // MUST include .js extension
 
 // --- Configuration ---
-const filCdnBaseUrl = "https://0xcdb8cc9323852ab3bed33f6c54a7e0c15d555353.calibration.filcdn.io/";
-const resultsDir = path.join(__dirname, 'results');
+// const filCdnBaseUrl = "https://0xcdb8cc9323852ab3bed33f6c54a7e0c15d555353.calibration.filcdn.io/";
 
 // --- Helper Types ---
 interface DoseData {
@@ -215,13 +213,11 @@ function getBootstrapCI(data: DoseData, iterations = 1000): { lower: number; upp
  * Generates a dose-response plot and saves it to a file.
  * @param data - The original data.
  * @param fit - The results from the model fit.
- * @param filePath - The path to save the generated JPEG.
  */
 async function generatePlot(
   data: DoseData,
-  fit: FitResult,
-  filePath: string
-): Promise<void> {
+  fit: FitResult
+): Promise<Buffer> {
 
   // --- 1. Prepare Data for Chart.js ---
   const scatterData = data.dose.map((d, i) => ({ x: d, y: data.response[i] / data.total[i] }));
@@ -302,9 +298,7 @@ async function generatePlot(
   // Get the image buffer
   const imageBuffer = await chart.toBinary();
 
-  // Save the file
-  fs.writeFileSync(filePath, imageBuffer);
-  console.log(`Plot saved successfully to ${filePath}`);
+  return(imageBuffer);
 }
 
 
@@ -325,13 +319,9 @@ export default async function toolCall(
 ): Promise<object> {
     
     let finalOutput = {};
-    const outputPlotPath = path.join(resultsDir, 'ld50_plot.jpeg');
 
     try {
-        // 1. Prepare environment
-        if (!fs.existsSync(resultsDir)) {
-            fs.mkdirSync(resultsDir, { recursive: true });
-        }
+
         
         // 2. Download and Parse Data
         console.log(`Downloading data from ${url}...`);
@@ -370,14 +360,13 @@ export default async function toolCall(
 
         // 5. Generate Plot
         console.log('Generating plot...');
-        await generatePlot(data, fit, outputPlotPath);
-        console.log(`Plot saved to ${outputPlotPath}`);
+        const plotBuffer = await generatePlot(data, fit);
+        console.log(`Plot done`);
 
         // --- SECTION 6: MODIFIED UPLOAD LOGIC ---
 
         // 6a. Read the generated plot file into a buffer and encode it as a Base64 Data URI
         console.log('Encoding plot as Base64 Data URI...');
-        const plotBuffer = fs.readFileSync(outputPlotPath);
         console.log('Uploading plot to filcdn ...');
 
         const plotUploadResult: UploadResult = await uploadData(plotBuffer, { proofSetId: 318 },synapseEnv); 
@@ -425,23 +414,9 @@ export default async function toolCall(
     } catch (error: any) {
         console.error("An error occurred during the process:", error.message);
         finalOutput = { success: false, error: error.message };
-    } finally {
-      // --- THIS IS THE NEW CLEANUP LOGIC ---
-      // This block will always run, after the try or after the catch.
-      // Check if the file exists before trying to delete it to avoid errors.
-      if (fs.existsSync(outputPlotPath)) {
-          try {
-              fs.unlinkSync(outputPlotPath);
-              console.log(`Successfully deleted temporary plot file: ${outputPlotPath}`);
-          } catch (err) {
-              // If deletion fails for some reason (e.g., permissions), log it
-              // but don't crash the whole process.
-              console.error(`Failed to delete temporary plot file`);
-          }
-      }
-  }
+    } 
 
-  return(finalOutput);
+    return(finalOutput);
 }
 
 // Add a declaration for the custom Math.median function to satisfy TypeScript
