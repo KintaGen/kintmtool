@@ -1,116 +1,140 @@
-import axios from 'axios'; // Make sure you have axios installed: pnpm add axios
-import FormData from 'form-data'; 
-
-
+import axios from 'axios';
+import FormData from 'form-data';
+import { Buffer } from 'buffer';
 
 /**
- * This function acts as a client to an existing Express.js API endpoint
- * to perform LD50 analysis.
- *
- * @param {string} expressApiBaseUrl The base URL of the Express server (e.g., 'http://localhost:3000').
- * @param {string} dataUrlFragment The data identifier (e.g., a CID) for the analysis.
- * @returns {Promise<string>} A promise that resolves to the JSON string result from the API.
+ * Decodes a Base64 plot string and uploads it as a file.
+ * (This helper function is correct and remains unchanged)
  */
+async function uploadPlot(
+    plotB64: string,
+    fileName: string,
+    uploadEndpoint: string
+): Promise<any> {
+    console.log(`Preparing to upload plot: ${fileName}`);
+    const base64Data = plotB64.split(',')[1];
+    if (!base64Data) {
+        throw new Error(`Invalid plot_b64 format for ${fileName}.`);
+    }
+    const plotBuffer = Buffer.from(base64Data, 'base64');
+    const form = new FormData();
+    form.append('file', plotBuffer, fileName);
+    form.append('dataType', 'analysis');
+    form.append('title', fileName.split('.')[0]);
+    const uploadResponse = await axios.post(uploadEndpoint, form, {
+        headers: form.getHeaders(),
+    });
+    console.log(`Successfully uploaded ${fileName}. Response:`, uploadResponse.data);
+    return uploadResponse.data;
+}
+
+
 export default async function toolCall(
     dataUrlFragment: string,
     dataType: string,
     envVars: {
         API_URL: string
     }
-): Promise<string> {
+): Promise<any> {
 
-    console.log(`Preparing to call Express API at: ${envVars.API_URL} for data: ${dataUrlFragment}`);
-    console.log(dataType)
-    // The full URL of the API endpoint we need to call
-    const endpointUrlDL50 = `${envVars.API_URL}/analyze-ld50`;
+    console.log(`Preparing to call API at: ${envVars.API_URL} for data type: ${dataType}`);
+
     const uploadEndpoint = `${envVars.API_URL}/upload`;
-    const endpointUrlGCMS = `${envVars.API_URL}/analyze-gcms`;
-    let endpointUrl;
-    console.log(dataType === "GCMS")
-    if(dataType === "DL50"){
-        endpointUrl = endpointUrlDL50;
-    } else if(dataType === "GCMS"){
-        endpointUrl = endpointUrlGCMS;
+    let endpointUrl: string | undefined;
+
+    if (dataType === "DL50") {
+        endpointUrl = `${envVars.API_URL}/analyze-ld50`;
+    } else if (dataType === "GCMS") {
+        endpointUrl = `${envVars.API_URL}/analyze-gcms`;
     }
-    console.log(endpointUrl)
-    if(!endpointUrl){
-        return(JSON.stringify({
-            success: false,
-            message: "Must define datatype as NMR or DL50"
-        }))
+
+    if (!endpointUrl) {
+        return { success: false, message: "Must define dataType as 'DL50' or 'GCMS'" };
     }
-    // The JSON payload that the /analyze-ld50 endpoint expects
-    const requestPayload = {
-        dataUrl: dataUrlFragment
-    };
+
+    const requestPayload = { dataUrl: dataUrlFragment };
 
     try {
-        console.log(`Sending POST request to ${endpointUrl} with payload:`, requestPayload);
-
-        // Use axios to make the HTTP POST request
+        // Step 1: Call the analysis endpoint
+        console.log(`[Step 1/2] Sending POST request to ${endpointUrl}`);
         const response = await axios.post(endpointUrl, requestPayload, {
-            headers: {
-                'Content-Type': 'application/json'
-            }
+            headers: { 'Content-Type': 'application/json' }
         });
-
-        // The response.data will contain the JSON object returned by the Express server
         const analysisResult = response.data;
-        // to test
-        if(dataType === "GCMS"){
-            return analysisResult;
-        }
-        console.log('Successfully received response from Express API.');
+        console.log('Successfully received analysis response.');
 
-        if (analysisResult.status !== 'success' || (!analysisResult.results?.plot_b64)) {
-            throw new Error(`LD50 analysis failed or did not return a plot: ${analysisResult.error || 'Unknown error'}`);
-        }       
-
-        // Extract the Base64 data from the data URI string
-        const base64Data = analysisResult.results.plot_b64.split(',')[1];
-        if (!base64Data) {
-            throw new Error("Invalid plot_b64 format received from analysis API.");
+        if (analysisResult.status !== 'success') {
+            throw new Error(`Analysis failed: ${analysisResult.error || 'Unknown error'}`);
         }
-        // Convert the Base64 string into a Buffer, which is what Node.js uses for binary data.
-        const plotBuffer = Buffer.from(base64Data, 'base64');
+
+        // Step 2: Process results and upload plots
+        console.log(`[Step 2/2] Processing results and uploading plots...`);
         
-        // Create a new FormData instance
-        const form = new FormData();
+        if (dataType === "DL50") {
+            // This logic remains the same for the LD50 script
+            if (!analysisResult.results?.plot_b64) {
+                 throw new Error("DL50 analysis did not return a 'plot_b64' string.");
+            }
+            const uploadData = await uploadPlot(
+                analysisResult.results.plot_b64,
+                'ld50_analysis_plot.png',
+                uploadEndpoint
+            );
+            delete analysisResult.results.plot_b64;
+            return { ...analysisResult, upload: uploadData };
 
-        // Append all the required fields, just like in the client-side example
-        form.append('file', plotBuffer, 'chat_analysis_plot.png'); // Add the buffer with a filename
-        form.append('dataType', 'analysis');
-        form.append('title', 'chat_analysis');
-        //form.append('projectId', ''); // Send '' as a string 
+        } else if (dataType === "GCMS") {
+            // --- NEW, CORRECTED LOGIC FOR GCMS ---
+            if (!analysisResult.results || typeof analysisResult.results !== 'object') {
+                throw new Error("GCMS analysis did not return a results object.");
+            }
+            
+            const uploadedPlots: { [key: string]: any } = {};
+            const plotUploadPromises: Promise<void>[] = [];
+            
+            // Loop over all keys in the results object to find plots
+            for (const key in analysisResult.results) {
+                // Identify plots by the '_b64' suffix convention from the R script
+                if (Object.prototype.hasOwnProperty.call(analysisResult.results, key) && key.endsWith('_b64')) {
+                    const plotB64 = analysisResult.results[key];
+                    const plotName = key.replace(/_b64$/, ''); // e.g., "pca_plot_b64" -> "pca_plot"
+                    const fileName = `${plotName}.png`;
 
-        console.log(`[Step 2/2] Sending multipart/form-data request to ${uploadEndpoint}`);
-        
-        // Make the POST request to the upload endpoint
-        const uploadResponse = await axios.post(uploadEndpoint, form);
-        console.log(uploadResponse)
-        console.log('[Step 2/2] Upload successful!');
-        const callResponse = {
-            results: analysisResult.results,
-            ...uploadResponse.data
+                    // Add the upload task to an array of promises to run in parallel
+                    plotUploadPromises.push(
+                        uploadPlot(plotB64, fileName, uploadEndpoint)
+                            .then(uploadData => {
+                                // When a plot is uploaded, store its CID/URL data
+                                uploadedPlots[plotName] = uploadData;
+                            })
+                    );
+                    
+                    // IMPORTANT: Delete the large Base64 string from the results object now
+                    // that we've captured it. This keeps the final response lightweight.
+                    delete analysisResult.results[key];
+                }
+            }
+            delete analysisResult.results.stats_table;
+
+            // Wait for all plot uploads to complete
+            await Promise.all(plotUploadPromises);
+
+            // Return the analysis data (e.g., stats_table) plus the new 'uploads' object
+            return {
+                ...analysisResult,
+                uploads: uploadedPlots // e.g., { pca_plot: {cid,...}, volcano_plot: {cid,...} }
+            };
         }
-        // Return the response from the final upload step
-        return callResponse
+
     } catch (error: any) {
-        console.error('An error occurred while calling the Express API.');
-        
-        // Axios wraps HTTP errors in a specific structure.
-        // It's helpful to log the response data from the server if it exists.
+        console.error('An error occurred during the tool call process.');
         if (error.response) {
-            console.error('API Error Response Status:', error.response.status);
-            console.error('API Error Response Data:', error.response.data);
-            // Re-throw a more informative error
+            console.error('API Error Response:', error.response.data);
             throw new Error(`API call failed with status ${error.response.status}: ${JSON.stringify(error.response.data)}`);
         } else if (error.request) {
-            // The request was made but no response was received (e.g., server is down)
-            throw new Error(`No response received from API at ${endpointUrl}. Is the server running?`);
+            throw new Error(`No response received from API. Is the server at ${envVars.API_URL} running?`);
         } else {
-            // Something else went wrong in setting up the request
-            throw new Error(`Error setting up API request: ${error.message}`);
+            throw new Error(`Error setting up API request or processing response: ${error.message}`);
         }
     }
 }
