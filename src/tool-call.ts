@@ -1,30 +1,74 @@
 import axios from 'axios';
 import FormData from 'form-data';
 import { Buffer } from 'buffer';
+import JSZip from 'jszip'; // For creating zip files on the client-side
 
 /**
- * Decodes a Base64 plot string and uploads it as a file.
- * (This helper function is correct and remains unchanged)
+ * Creates a zip archive from analysis results, uploads it in a single call,
+ * and returns the upload response.
+ * @param results - The `results` object from the analysis API call.
+ * @param reportBaseName - A base name for the files, e.g., 'ld50_analysis'.
+ * @param uploadEndpoint - The URL to upload the final zip file to.
+ * @returns The data from the upload API response.
  */
-async function uploadPlot(
-    plotB64: string,
-    fileName: string,
+async function createAndUploadReportZip(
+    results: any,
+    reportBaseName: string,
     uploadEndpoint: string
 ): Promise<any> {
-    console.log(`Preparing to upload plot: ${fileName}`);
-    const base64Data = plotB64.split(',')[1];
-    if (!base64Data) {
-        throw new Error(`Invalid plot_b64 format for ${fileName}.`);
+    if (!results || typeof results !== 'object') {
+        throw new Error("Analysis did not return a valid results object.");
     }
-    const plotBuffer = Buffer.from(base64Data, 'base64');
+    
+    console.log(`Creating a zip archive for ${reportBaseName}...`);
+    const zip = new JSZip();
+
+    // Find all plot strings (ending in _b64), add them as images to the zip,
+    // and then remove them from the original results object.
+    for (const key in results) {
+        if (Object.prototype.hasOwnProperty.call(results, key) && key.endsWith('_b64')) {
+            const plotB64 = results[key];
+            const plotName = key.replace(/_b64$/, ''); // e.g., "pca_plot_b64" -> "pca_plot"
+            const fileName = `${plotName}.png`;
+
+            const base64Data = plotB64.split(',')[1];
+            if (!base64Data) {
+                console.warn(`Skipping invalid base64 format for ${key}.`);
+                continue;
+            }
+            const plotBuffer = Buffer.from(base64Data, 'base64');
+            
+            zip.file(fileName, plotBuffer); // Add plot image to zip
+            console.log(`Added ${fileName} to zip archive.`);
+            
+            delete results[key]; // Remove large string from results
+        }
+    }
+    
+    // Add the remaining lightweight JSON data (e.g., stats) to the zip.
+    const jsonData = JSON.stringify(results, null, 2);
+    zip.file('analysis_data.json', jsonData);
+    console.log('Added analysis_data.json to zip archive.');
+
+    // Generate the final zip file as a buffer.
+    const zipBuffer = await zip.generateAsync({
+        type: 'nodebuffer',
+        compression: 'DEFLATE'
+    });
+
+    // Prepare and upload the single zip file.
+    const zipFileName = `${reportBaseName}_report.zip`;
     const form = new FormData();
-    form.append('file', plotBuffer, fileName);
-    form.append('dataType', 'analysis');
-    form.append('title', fileName.split('.')[0]);
+    form.append('file', zipBuffer, zipFileName);
+    form.append('dataType', 'analysis_report'); // Consistent type for reports
+    form.append('title', reportBaseName.replace(/_/g, ' ') + ' report');
+    
+    console.log(`Uploading single report: ${zipFileName}`);
     const uploadResponse = await axios.post(uploadEndpoint, form, {
         headers: form.getHeaders(),
     });
-    console.log(`Successfully uploaded ${fileName}. Response:`, uploadResponse.data);
+    console.log(uploadResponse)
+    console.log(`Successfully uploaded ${zipFileName}. Response:`, uploadResponse.data);
     return uploadResponse.data;
 }
 
@@ -41,14 +85,17 @@ export default async function toolCall(
 
     const uploadEndpoint = `${envVars.API_URL}/upload`;
     let endpointUrl: string | undefined;
+    let reportBaseName: string | undefined;
 
     if (dataType === "DL50") {
         endpointUrl = `${envVars.API_URL}/analyze/ld50`;
+        reportBaseName = 'ld50_analysis';
     } else if (dataType === "GCMS") {
         endpointUrl = `${envVars.API_URL}/analyze/gcms-profiling`;
+        reportBaseName = 'gcms_analysis';
     }
 
-    if (!endpointUrl) {
+    if (!endpointUrl || !reportBaseName) {
         return { success: false, message: "Must define dataType as 'DL50' or 'GCMS'" };
     }
 
@@ -67,64 +114,21 @@ export default async function toolCall(
             throw new Error(`Analysis failed: ${analysisResult.error || 'Unknown error'}`);
         }
 
-        // Step 2: Process results and upload plots
-        console.log(`[Step 2/2] Processing results and uploading plots...`);
+        // Step 2: Create a zip report and upload it in a single transaction
+        console.log(`[Step 2/2] Creating and uploading analysis report...`);
         
-        if (dataType === "DL50") {
-            // This logic remains the same for the LD50 script
-            if (!analysisResult.results?.plot_b64) {
-                 throw new Error("DL50 analysis did not return a 'plot_b64' string.");
-            }
-            const uploadData = await uploadPlot(
-                analysisResult.results.plot_b64,
-                'ld50_analysis_plot.png',
-                uploadEndpoint
-            );
-            delete analysisResult.results.plot_b64;
-            return { ...analysisResult, upload: uploadData };
-
-        } else if (dataType === "GCMS") {
-            // --- NEW, CORRECTED LOGIC FOR GCMS ---
-            if (!analysisResult.results || typeof analysisResult.results !== 'object') {
-                throw new Error("GCMS analysis did not return a results object.");
-            }
-            
-            const uploadedPlots: { [key: string]: any } = {};
-            const plotUploadPromises: Promise<void>[] = [];
-            
-            // Loop over all keys in the results object to find plots
-            for (const key in analysisResult.results) {
-                // Identify plots by the '_b64' suffix convention from the R script
-                if (Object.prototype.hasOwnProperty.call(analysisResult.results, key) && key.endsWith('_b64')) {
-                    const plotB64 = analysisResult.results[key];
-                    const plotName = key.replace(/_b64$/, ''); // e.g., "pca_plot_b64" -> "pca_plot"
-                    const fileName = `${plotName}.png`;
-
-                    // Add the upload task to an array of promises to run in parallel
-                    plotUploadPromises.push(
-                        uploadPlot(plotB64, fileName, uploadEndpoint)
-                            .then(uploadData => {
-                                // When a plot is uploaded, store its CID/URL data
-                                uploadedPlots[plotName] = uploadData;
-                            })
-                    );
-                    
-                    // IMPORTANT: Delete the large Base64 string from the results object now
-                    // that we've captured it. This keeps the final response lightweight.
-                    delete analysisResult.results[key];
-                }
-            }
-            delete analysisResult.results.stats_table;
-
-            // Wait for all plot uploads to complete
-            await Promise.all(plotUploadPromises);
-
-            // Return the analysis data (e.g., stats_table) plus the new 'uploads' object
-            return {
-                ...analysisResult,
-                uploads: uploadedPlots // e.g., { pca_plot: {cid,...}, volcano_plot: {cid,...} }
-            };
-        }
+        const uploadData = await createAndUploadReportZip(
+            analysisResult.results,
+            reportBaseName,
+            uploadEndpoint
+        );
+        
+        // The results object passed to the helper is modified by reference (keys are deleted),
+        // so analysisResult is now lightweight.
+        return {
+            ...analysisResult,
+            upload: uploadData
+        };
 
     } catch (error: any) {
         console.error('An error occurred during the tool call process.');
