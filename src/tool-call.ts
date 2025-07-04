@@ -43,9 +43,9 @@ export default async function toolCall(
     let endpointUrl: string | undefined;
 
     if (dataType === "DL50") {
-        endpointUrl = `${envVars.API_URL}/analyze-ld50`;
+        endpointUrl = `${envVars.API_URL}/analyze/ld50`;
     } else if (dataType === "GCMS") {
-        endpointUrl = `${envVars.API_URL}/analyze-gcms`;
+        endpointUrl = `${envVars.API_URL}/analyze/gcms-profiling`;
     }
 
     if (!endpointUrl) {
