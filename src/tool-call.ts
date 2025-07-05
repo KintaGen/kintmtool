@@ -1,7 +1,7 @@
 import axios from 'axios';
 import FormData from 'form-data';
 import { Buffer } from 'buffer';
-import JSZip from 'jszip'; // For creating zip files on the client-side
+import archiver from 'archiver'; // <-- NEW: The Node.js-native zipping library
 
 /**
  * Creates a zip archive from analysis results, uploads it in a single call,
@@ -21,8 +21,21 @@ async function createAndUploadReportZip(
     }
     
     console.log(`Creating a zip archive for ${reportBaseName}...`);
-    const zip = new JSZip();
+    // --- NEW LOGIC using archiver ---
+    // We create an in-memory zip archive stream.
+    const archive = archiver('zip', {
+        zlib: { level: 9 } // Sets the compression level.
+    });
 
+    // We will collect the zip data into an array of buffers.
+    const chunks: Buffer[] = [];
+    archive.on('data', (chunk: any) => chunks.push(chunk));
+    
+    // Create a promise that resolves when the archive is finished.
+    const archiveFinished = new Promise((resolve, reject) => {
+        archive.on('end', resolve);
+        archive.on('error', reject);
+    });
     // Find all plot strings (ending in _b64), add them as images to the zip,
     // and then remove them from the original results object.
     for (const key in results) {
@@ -38,7 +51,8 @@ async function createAndUploadReportZip(
             }
             const plotBuffer = Buffer.from(base64Data, 'base64');
             
-            zip.file(fileName, plotBuffer); // Add plot image to zip
+            // Append the plot buffer to the archive with its filename.
+            archive.append(plotBuffer, { name: fileName });
             console.log(`Added ${fileName} to zip archive.`);
             
             delete results[key]; // Remove large string from results
@@ -47,14 +61,18 @@ async function createAndUploadReportZip(
     
     // Add the remaining lightweight JSON data (e.g., stats) to the zip.
     const jsonData = JSON.stringify(results, null, 2);
-    zip.file('analysis_data.json', jsonData);
+    // Append the JSON string to the archive with its filename.
+    archive.append(jsonData, { name: 'analysis_data.json' });
     console.log('Added analysis_data.json to zip archive.');
 
-    // Generate the final zip file as a buffer.
-    const zipBuffer = await zip.generateAsync({
-        type: 'nodebuffer',
-        compression: 'DEFLATE'
-    });
+    // Finalize the archive. This signals that we are done adding files.
+    await archive.finalize();
+    
+    // Wait for the stream to finish writing all its data.
+    await archiveFinished;
+
+    // Combine all the collected buffer chunks into a single buffer.
+    const zipBuffer = Buffer.concat(chunks);
 
     // Prepare and upload the single zip file.
     const zipFileName = `${reportBaseName}_report.zip`;

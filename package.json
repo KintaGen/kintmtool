@@ -9,9 +9,9 @@
     "start:dev": "npm run build && node bin/dev.js",
     "test:request:gcms": "curl -XGET \"http://localhost:3000?url=https%3A%2F%2F0xcdb8cc9323852ab3bed33f6c54a7e0c15d555353.calibration.filcdn.io%2Fbaga6ea4seaqchyykmwuxza4ddrvm6s3kxpkoaviy6arjlgnn77r4obnvnf4tkgq&type=GCMS\" && echo",
     "test:request:ld50": "curl -XGET \"http://localhost:3000?url=https%3A%2F%2F0xcdb8cc9323852ab3bed33f6c54a7e0c15d555353.calibration.filcdn.io%2Fbaga6ea4seaqchyykmwuxza4ddrvm6s3kxpkoaviy6arjlgnn77r4obnvnf4tkgq&type=DL50\" && echo"
-
   },
   "devDependencies": {
+    "@types/archiver": "^6.0.3",
     "@types/node": "^20.19.2",
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
@@ -21,11 +21,11 @@
   "license": "ISC",
   "dependencies": {
     "@filoz/synapse-sdk": "^0.15.0",
+    "archiver": "^7.0.1",
     "axios": "^1.10.0",
     "chartjs-to-image": "^1.2.2",
     "fmin": "^0.0.4",
     "form-data": "^4.0.3",
-    "jszip": "^3.10.1",
     "path": "^0.12.7"
   }
 }
