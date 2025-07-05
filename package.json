@@ -5,7 +5,7 @@
   "author": "",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "rm -r dist && tsc",
     "start:dev": "npm run build && node bin/dev.js",
     "test:request:gcms": "curl -XGET \"http://localhost:3000?url=https%3A%2F%2F0xcdb8cc9323852ab3bed33f6c54a7e0c15d555353.calibration.filcdn.io%2Fbaga6ea4seaqchyykmwuxza4ddrvm6s3kxpkoaviy6arjlgnn77r4obnvnf4tkgq&type=GCMS\" && echo",
     "test:request:ld50": "curl -XGET \"http://localhost:3000?url=https%3A%2F%2F0xcdb8cc9323852ab3bed33f6c54a7e0c15d555353.calibration.filcdn.io%2Fbaga6ea4seaqchyykmwuxza4ddrvm6s3kxpkoaviy6arjlgnn77r4obnvnf4tkgq&type=DL50\" && echo"
