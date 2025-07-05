@@ -1,6 +1,6 @@
 {
     "name": "Test Chemicals and LD50 analysis",
-    "description": "Scripts that performs LD50 analysis and chemical analysis in order to help researchers in those areas.",
+    "description": "Scripts that performs LD50 analysis and chemical analysis in order to help researchers in those areas. It contains gsms analysis and lethal dosis;",
     "schema": {
         "type": "function",
         "function": {
