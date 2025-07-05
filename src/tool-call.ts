@@ -67,7 +67,6 @@ async function createAndUploadReportZip(
     const uploadResponse = await axios.post(uploadEndpoint, form, {
         headers: form.getHeaders(),
     });
-    console.log(uploadResponse)
     console.log(`Successfully uploaded ${zipFileName}. Response:`, uploadResponse.data);
     return uploadResponse.data;
 }
